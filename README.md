@@ -1,4 +1,4 @@
-# Print Pack
+# Proxy Maker 2
 
 A NodeJS utility to generate Yu-Gi-Oh proxy files.
 
