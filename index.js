@@ -1,4 +1,5 @@
 import fs from "fs/promises";
+import path from "path";
 import { PageSizes, PDFDocument } from "pdf-lib";
 
 const _MM_TO_PX = 2.8346666667;
@@ -13,14 +14,23 @@ const MIN_VERTICAL_MARGIN = 6.35 * _MM_TO_PX;
 const PAGE_SIZE = portraitToLandscape(PageSizes.A4);
 const [PAGE_WIDTH, PAGE_HEIGHT] = PAGE_SIZE;
 
+const TYPICAL_CARD_WIDTH = 59 * _MM_TO_PX;
+const TYPICAL_CARD_HEIGHT = 86 * _MM_TO_PX;
+const INPUT_DIRECTORY = "img";
+const OUT_FILE = "out.pdf";
+
 main();
 
 async function main() {
-  const imageBytes = await fs.readFile("img/test.jpg");
-
   const pdfDoc = await PDFDocument.create();
 
-  const imageObj = await pdfDoc.embedJpg(imageBytes);
+  const imageFiles = await fs.readdir(INPUT_DIRECTORY);
+  const imageObjs = await Promise.all(
+    imageFiles.map(async (file) => {
+      const bytes = await fs.readFile(path.join(INPUT_DIRECTORY, file));
+      return pdfDoc.embedJpg(bytes);
+    })
+  );
 
   const maxCardWidth = calcCardDim(
     PAGE_WIDTH,
@@ -35,15 +45,24 @@ async function main() {
     VERTICAL_GAP
   );
 
-  const cardScale = Math.min(
-    maxCardWidth / imageObj.width,
-    maxCardHeight / imageObj.height
-  );
+  // There is a method `PDFImage.scaleToFit` that does a similar thing to this
+  // but uses actual dimensions of the image instead of the dimensions
+  // of a typical Yu-Gi-Oh card
+  //
+  // A method that uses scaleToFit would (I assume) have a messed up layout if
+  // any of the images had a different aspect-ratio than the others
+  //
+  // Where as this method would distort the image to keep the layout consistent
+  const cardWidthScale = maxCardWidth / TYPICAL_CARD_WIDTH;
+  const cardHeightScale = maxCardHeight / TYPICAL_CARD_HEIGHT;
+  const cardScale = Math.min(cardWidthScale, cardHeightScale);
 
-  const cardDims = imageObj.scale(cardScale);
+  let cardWidth = TYPICAL_CARD_WIDTH * cardScale;
+  let cardHeight = TYPICAL_CARD_HEIGHT * cardScale;
 
   const [horizontalMargin, verticalMargin] = calcActualMarginSize(
-    cardDims,
+    cardWidth,
+    cardHeight,
     PAGE_WIDTH,
     PAGE_HEIGHT,
     NUM_COLS,
@@ -52,21 +71,32 @@ async function main() {
     VERTICAL_GAP
   );
 
-  const page = pdfDoc.addPage(PAGE_SIZE);
+  const numPages = imageObjs.length / (NUM_COLS * NUM_ROWS);
 
-  for (let i = 0; i < NUM_ROWS; i++) {
-    for (let j = 0; j < NUM_COLS; j++) {
-      page.drawImage(imageObj, {
-        x: horizontalMargin / 2 + j * (cardDims.width + HORIZONTAL_GAP),
-        y: verticalMargin / 2 + i * (cardDims.height + VERTICAL_GAP),
-        width: cardDims.width,
-        height: cardDims.height,
-      });
+  pageLoop: for (let pageIndex = 0; pageIndex < numPages; pageIndex++) {
+    const page = pdfDoc.addPage(PAGE_SIZE);
+
+    for (let row = 0; row < NUM_ROWS; row++) {
+      for (let col = 0; col < NUM_COLS; col++) {
+        const imageIndex =
+          pageIndex * NUM_ROWS * NUM_COLS + row * NUM_COLS + col;
+
+        if (imageIndex >= imageObjs.length) {
+          break pageLoop;
+        }
+        const imageObj = imageObjs[imageIndex];
+        page.drawImage(imageObj, {
+          x: horizontalMargin / 2 + col * (cardWidth + HORIZONTAL_GAP),
+          y: verticalMargin / 2 + row * (cardHeight + VERTICAL_GAP),
+          width: cardWidth,
+          height: cardHeight,
+        });
+      }
     }
   }
 
   const pdfBytes = await pdfDoc.save();
-  await fs.writeFile("out.pdf", pdfBytes);
+  await fs.writeFile(OUT_FILE, pdfBytes);
 }
 
 function calcCardDim(totalSize, margin, numItems, gapSize) {
@@ -82,7 +112,8 @@ function calcContentSize(totalSize, margin, numItems, gapSize) {
 }
 
 function calcActualMarginSize(
-  cardDims,
+  cardWidth,
+  cardHeight,
   pageWidth,
   pageHeight,
   cols,
@@ -90,11 +121,11 @@ function calcActualMarginSize(
   rows,
   verticalGap
 ) {
-  const contentWidth = cols * cardDims.width;
+  const contentWidth = cols * cardWidth;
   const totalHorizontalGapSize = (cols - 1) * horizontalGap;
   const horizontalMargin = pageWidth - (contentWidth + totalHorizontalGapSize);
 
-  const contentHeight = rows * cardDims.height;
+  const contentHeight = rows * cardHeight;
   const totalVerticalGapSize = (rows - 1) * verticalGap;
   const verticalMargin = pageHeight - (contentHeight + totalVerticalGapSize);
 
