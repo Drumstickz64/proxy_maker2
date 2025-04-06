@@ -25,6 +25,9 @@ async function main() {
   const imageFiles = await fs.readdir(INPUT_DIRECTORY);
   const imageObjs = await Promise.all(
     imageFiles
+      .filter(
+        (file) => path.extname(file) == ".jpg" || path.extname(file) == ".png"
+      )
       .flatMap((file) => {
         if (!file.startsWith("X")) {
           return [file];
@@ -51,7 +54,14 @@ async function main() {
       })
       .map(async (file) => {
         const bytes = await fs.readFile(path.join(INPUT_DIRECTORY, file));
-        return pdfDoc.embedJpg(bytes);
+        switch (path.extname(file)) {
+          case ".jpg":
+            return pdfDoc.embedJpg(bytes);
+          case ".png":
+            return pdfDoc.embedPng(bytes);
+          default:
+            throw Error("UNREACHABLE");
+        }
       })
   );
 

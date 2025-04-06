@@ -28,3 +28,10 @@ To repeat a card, simply prepend a "X<number> - " to the file name, for example:
 Card1.jpg => X3 - Card1.jpg
 Monster Reborn.png => X256 - Monster Reborn.png
 ```
+
+## Supported image formats
+
+This application only supports:
+
+- Jpeg files
+- Png files
