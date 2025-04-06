@@ -60,13 +60,15 @@ async function main() {
   let cardWidth = TYPICAL_CARD_WIDTH * cardScale;
   let cardHeight = TYPICAL_CARD_HEIGHT * cardScale;
 
-  const [horizontalMargin, verticalMargin] = calcActualMarginSize(
+  const horizontalMargin = calcActualMarginSize(
     cardWidth,
-    cardHeight,
     PAGE_WIDTH,
-    PAGE_HEIGHT,
     NUM_COLS,
-    HORIZONTAL_GAP,
+    HORIZONTAL_GAP
+  );
+  const verticalMargin = calcActualMarginSize(
+    cardHeight,
+    PAGE_HEIGHT,
     NUM_ROWS,
     VERTICAL_GAP
   );
@@ -111,25 +113,12 @@ function calcContentSize(totalSize, margin, numItems, gapSize) {
   return totalSize - (margin + totalGapSize);
 }
 
-function calcActualMarginSize(
-  cardWidth,
-  cardHeight,
-  pageWidth,
-  pageHeight,
-  cols,
-  horizontalGap,
-  rows,
-  verticalGap
-) {
-  const contentWidth = cols * cardWidth;
-  const totalHorizontalGapSize = (cols - 1) * horizontalGap;
-  const horizontalMargin = pageWidth - (contentWidth + totalHorizontalGapSize);
+function calcActualMarginSize(cardSize, pageSize, numCards, gap) {
+  const contentSize = numCards * cardSize;
+  const totalGapSize = (numCards - 1) * gap;
+  const margin = pageSize - (contentSize + totalGapSize);
 
-  const contentHeight = rows * cardHeight;
-  const totalVerticalGapSize = (rows - 1) * verticalGap;
-  const verticalMargin = pageHeight - (contentHeight + totalVerticalGapSize);
-
-  return [horizontalMargin, verticalMargin];
+  return margin;
 }
 
 function portraitToLandscape([width, height]) {
