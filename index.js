@@ -2,20 +2,18 @@ import fs from "fs/promises";
 import path from "path";
 import { PageSizes, PDFDocument } from "pdf-lib";
 
-const _MM_TO_PX = 2.8346666667;
-
 const NUM_COLS = 4;
 const NUM_ROWS = 2;
-const HORIZONTAL_GAP = 3 * _MM_TO_PX;
-const VERTICAL_GAP = 3 * _MM_TO_PX;
-const MIN_HORIZONTAL_MARGIN = 6.35 * _MM_TO_PX;
-const MIN_VERTICAL_MARGIN = 6.35 * _MM_TO_PX;
+const HORIZONTAL_GAP = mmToPx(3);
+const VERTICAL_GAP = mmToPx(3);
+const MIN_HORIZONTAL_MARGIN = mmToPx(6.35);
+const MIN_VERTICAL_MARGIN = mmToPx(6.35);
 
 const PAGE_SIZE = portraitToLandscape(PageSizes.A4);
 const [PAGE_WIDTH, PAGE_HEIGHT] = PAGE_SIZE;
 
-const TYPICAL_CARD_WIDTH = 59 * _MM_TO_PX;
-const TYPICAL_CARD_HEIGHT = 86 * _MM_TO_PX;
+const TYPICAL_CARD_WIDTH = mmToPx(59);
+const TYPICAL_CARD_HEIGHT = mmToPx(86);
 const INPUT_DIRECTORY = "img";
 const OUT_FILE = "out.pdf";
 
@@ -26,10 +24,35 @@ async function main() {
 
   const imageFiles = await fs.readdir(INPUT_DIRECTORY);
   const imageObjs = await Promise.all(
-    imageFiles.map(async (file) => {
-      const bytes = await fs.readFile(path.join(INPUT_DIRECTORY, file));
-      return pdfDoc.embedJpg(bytes);
-    })
+    imageFiles
+      .flatMap((file) => {
+        if (!file.startsWith("X")) {
+          return [file];
+        }
+        let multiplier;
+        try {
+          multiplier = parseMultiplier(file);
+        } catch (e) {
+          console.error(
+            `detected that the file '${file}' should be repeated, but was unable to parse the multiplier`
+          );
+          console.log(
+            "names of files you want to repeat should be: X<number> - <file name>"
+          );
+          console.log(
+            "if you did not intend to make the file repeating, make sure it does not contain a capital X at the start of its name"
+          );
+          console.log("parsing error logged to file 'error.log'");
+          fs.writeFile("error.log", e.message);
+          return [file];
+        }
+
+        return Array(multiplier).fill(file);
+      })
+      .map(async (file) => {
+        const bytes = await fs.readFile(path.join(INPUT_DIRECTORY, file));
+        return pdfDoc.embedJpg(bytes);
+      })
   );
 
   const maxCardWidth = calcCardDim(
@@ -121,6 +144,22 @@ function calcActualMarginSize(cardSize, pageSize, numCards, gap) {
   return margin;
 }
 
+function mmToPx(mm) {
+  return mm * 2.8346666667;
+}
+
 function portraitToLandscape([width, height]) {
   return [height, width];
+}
+
+function parseMultiplier(file) {
+  let multiplierStr = file.split(" - ")[0];
+  multiplierStr = multiplierStr.substring(1);
+  let multiplier = parseInt(multiplierStr);
+
+  if (isNaN(multiplier)) {
+    throw EvalError(`invalid multiplier string ${multiplierStr}`);
+  }
+
+  return multiplier;
 }

@@ -1,5 +1,5 @@
 {
-  "name": "pdf_lib_test",
+  "name": "print_pack2",
   "version": "1.0.0",
   "description": "",
   "type": "module",
@@ -13,6 +13,6 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "packageManager": "pnpm@10.7.1"
 }
