@@ -1,25 +1,31 @@
 import fs from "fs/promises";
 import path from "path";
 import { PageSizes, PDFDocument } from "pdf-lib";
+import process from "process";
 
-const NUM_COLS = 4;
-const NUM_ROWS = 2;
-const HORIZONTAL_GAP = mmToPx(3);
-const VERTICAL_GAP = mmToPx(3);
-const MIN_HORIZONTAL_MARGIN = mmToPx(6.35);
-const MIN_VERTICAL_MARGIN = mmToPx(6.35);
 const TYPICAL_CARD_WIDTH = mmToPx(59);
 const TYPICAL_CARD_HEIGHT = mmToPx(86);
-
 const PAGE_SIZE = portraitToLandscape(PageSizes.A4);
 const [PAGE_WIDTH, PAGE_HEIGHT] = PAGE_SIZE;
 
 const INPUT_DIRECTORY = "img";
 const OUT_FILE = "out.pdf";
 
+const args = {
+  numCols: 4,
+  numRows: 2,
+  horizontalGap: mmToPx(3),
+  verticalGap: mmToPx(3),
+  minHorizontalMargin: mmToPx(6.35),
+  minVerticalMargin: mmToPx(6.35),
+};
+
 main();
 
 async function main() {
+  parseArgs();
+  console.log(args);
+
   const pdfDoc = await PDFDocument.create();
 
   const imageFiles = await fs.readdir(INPUT_DIRECTORY);
@@ -74,15 +80,15 @@ async function main() {
 
   const maxCardWidth = calcCardDim(
     PAGE_WIDTH,
-    MIN_HORIZONTAL_MARGIN,
-    NUM_COLS,
-    HORIZONTAL_GAP
+    args.minHorizontalMargin,
+    args.numCols,
+    args.horizontalGap
   );
   const maxCardHeight = calcCardDim(
     PAGE_HEIGHT,
-    MIN_VERTICAL_MARGIN,
-    NUM_ROWS,
-    VERTICAL_GAP
+    args.minVerticalMargin,
+    args.numRows,
+    args.verticalGap
   );
 
   // There is a method `PDFImage.scaleToFit` that does a similar thing to this
@@ -103,33 +109,33 @@ async function main() {
   const horizontalMargin = calcActualMarginSize(
     cardWidth,
     PAGE_WIDTH,
-    NUM_COLS,
-    HORIZONTAL_GAP
+    args.numCols,
+    args.horizontalGap
   );
   const verticalMargin = calcActualMarginSize(
     cardHeight,
     PAGE_HEIGHT,
-    NUM_ROWS,
-    VERTICAL_GAP
+    args.numRows,
+    args.verticalGap
   );
 
-  const numPages = imageObjs.length / (NUM_COLS * NUM_ROWS);
+  const numPages = imageObjs.length / (args.numCols * args.numRows);
 
   pageLoop: for (let pageIndex = 0; pageIndex < numPages; pageIndex++) {
     const page = pdfDoc.addPage(PAGE_SIZE);
 
-    for (let row = 0; row < NUM_ROWS; row++) {
-      for (let col = 0; col < NUM_COLS; col++) {
+    for (let row = 0; row < args.numRows; row++) {
+      for (let col = 0; col < args.numCols; col++) {
         const imageIndex =
-          pageIndex * NUM_ROWS * NUM_COLS + row * NUM_COLS + col;
+          pageIndex * args.numRows * args.numCols + row * args.numCols + col;
 
         if (imageIndex >= imageObjs.length) {
           break pageLoop;
         }
         const imageObj = imageObjs[imageIndex];
         page.drawImage(imageObj, {
-          x: horizontalMargin / 2 + col * (cardWidth + HORIZONTAL_GAP),
-          y: verticalMargin / 2 + row * (cardHeight + VERTICAL_GAP),
+          x: horizontalMargin / 2 + col * (cardWidth + args.horizontalGap),
+          y: verticalMargin / 2 + row * (cardHeight + args.verticalGap),
           width: cardWidth,
           height: cardHeight,
         });
@@ -140,6 +146,76 @@ async function main() {
   const pdfBytes = await pdfDoc.save();
   await fs.writeFile(OUT_FILE, pdfBytes);
   console.log(`generated proxy file successfully! I wrote it to '${OUT_FILE}'`);
+}
+
+function parseArgs() {
+  const cliArgs = process.argv.slice(2);
+  for (let arg of cliArgs) {
+    if (arg === "--help") {
+      printHelpMessage();
+      process.exit();
+    }
+    const [argName, value, ok] = parseCLIArg(arg);
+    if (!ok) {
+      console.log(`invalid command line argument '${arg}', I will skip it`);
+      continue;
+    }
+
+    switch (argName) {
+      case "--num-cols":
+        args.numCols = value;
+        break;
+      case "--num-rows":
+        args.numRows = value;
+        break;
+      case "--horizontal-gap":
+        args.horizontalGap = mmToPx(value);
+        break;
+      case "--vertical-gap":
+        args.verticalGap = mmToPx(value);
+        break;
+      case "--min-horizontal-margin":
+        args.minHorizontalMargin = mmToPx(value);
+        break;
+      case "--min-vertical-margin":
+        args.minVerticalMargin = mmToPx(value);
+        break;
+      default:
+        console.error(
+          `unrecognized command line argument '${arg}', I will skip it`
+        );
+        break;
+    }
+  }
+}
+
+function printHelpMessage() {
+  console.log(
+    `
+--num-cols
+--num-rows
+--horizontal-gap
+--vertical-gap
+--min-horizontal-margin
+--min-vertical-margin
+--help
+`.trim()
+  );
+}
+
+function parseCLIArg(arg) {
+  if (!arg.startsWith("--")) {
+    return [null, null, false];
+  }
+
+  const [key, rawValue] = arg.split("=");
+
+  const value = Number(rawValue);
+  if (isNaN(value)) {
+    return [null, null, false];
+  }
+
+  return [key, value, true];
 }
 
 function calcCardDim(totalSize, margin, numItems, gapSize) {
