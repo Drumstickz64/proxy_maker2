@@ -8,12 +8,12 @@ const HORIZONTAL_GAP = mmToPx(3);
 const VERTICAL_GAP = mmToPx(3);
 const MIN_HORIZONTAL_MARGIN = mmToPx(6.35);
 const MIN_VERTICAL_MARGIN = mmToPx(6.35);
+const TYPICAL_CARD_WIDTH = mmToPx(59);
+const TYPICAL_CARD_HEIGHT = mmToPx(86);
 
 const PAGE_SIZE = portraitToLandscape(PageSizes.A4);
 const [PAGE_WIDTH, PAGE_HEIGHT] = PAGE_SIZE;
 
-const TYPICAL_CARD_WIDTH = mmToPx(59);
-const TYPICAL_CARD_HEIGHT = mmToPx(86);
 const INPUT_DIRECTORY = "img";
 const OUT_FILE = "out.pdf";
 
@@ -25,9 +25,16 @@ async function main() {
   const imageFiles = await fs.readdir(INPUT_DIRECTORY);
   const imageObjs = await Promise.all(
     imageFiles
-      .filter(
-        (file) => path.extname(file) == ".jpg" || path.extname(file) == ".png"
-      )
+      .filter((file) => {
+        const isSupported =
+          path.extname(file) == ".jpg" || path.extname(file) == ".png";
+        if (!isSupported) {
+          console.log(
+            `'${file}' is not a JPEG or PNG file, I will ignore it...`
+          );
+        }
+        return isSupported;
+      })
       .flatMap((file) => {
         if (!file.startsWith("X")) {
           return [file];
@@ -132,6 +139,7 @@ async function main() {
 
   const pdfBytes = await pdfDoc.save();
   await fs.writeFile(OUT_FILE, pdfBytes);
+  console.log(`generated proxy file successfully! I wrote it to '${OUT_FILE}'`);
 }
 
 function calcCardDim(totalSize, margin, numItems, gapSize) {
