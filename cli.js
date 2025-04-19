@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import process from "process";
 
-import { defaultArgs, generateProxy } from "./shared.js";
+import { defaultArgs, generateProxy } from "./web/shared.js";
 
 const INPUT_DIRECTORY = "img";
 const OUT_FILE = "out.pdf";
