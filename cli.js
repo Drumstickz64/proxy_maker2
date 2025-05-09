@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import process from "process";
 
-import { defaultArgs, generateProxy, mmToPx } from "./shared.js";
+import { defaultArgs, generateProxy } from "./shared.js";
 
 const INPUT_DIRECTORY = "img";
 const OUT_FILE = "out.pdf";
@@ -98,16 +98,16 @@ function parseCliArgs() {
         args.numRows = value;
         break;
       case "--horizontal-gap":
-        args.horizontalGap = mmToPx(value);
+        args.horizontalGap = value;
         break;
       case "--vertical-gap":
-        args.verticalGap = mmToPx(value);
+        args.verticalGap = value;
         break;
       case "--min-horizontal-margin":
-        args.minHorizontalMargin = mmToPx(value);
+        args.minHorizontalMargin = value;
         break;
       case "--min-vertical-margin":
-        args.minVerticalMargin = mmToPx(value);
+        args.minVerticalMargin = value;
         break;
       default:
         console.error(
