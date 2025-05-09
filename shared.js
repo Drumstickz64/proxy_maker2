@@ -118,7 +118,7 @@ function calcActualMarginSize(cardSize, pageSize, numCards, gap) {
   return margin;
 }
 
-function mmToPx(mm) {
+export function mmToPx(mm) {
   return mm * 2.8346666667;
 }
 
