@@ -10,8 +10,8 @@ export const defaultArgs = {
   numRows: 2,
   horizontalGap: mmToPx(3),
   verticalGap: mmToPx(3),
-  minHorizontalMargin: mmToPx(6.35),
-  minVerticalMargin: mmToPx(6.35),
+  minHorizontalMargin: 0,
+  minVerticalMargin: 0,
 };
 
 export async function generateProxy(images, args) {
